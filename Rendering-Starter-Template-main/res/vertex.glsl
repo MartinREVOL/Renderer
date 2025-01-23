@@ -7,6 +7,8 @@ layout(location = 0) in vec3 in_position;
 
 uniform mat4 model_view_projection_matrix; // Matrice combinée MVP
 
+
+
 void main()
 {
     vertex_position = in_position;

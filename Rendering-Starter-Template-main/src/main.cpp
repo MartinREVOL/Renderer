@@ -10,6 +10,9 @@ int main()
     auto camera = gl::Camera{};
     gl::set_events_callbacks({camera.events_callbacks()}); // Connecter la caméra aux événements
 
+    // À mettre dans l'initialisation
+    glEnable(GL_DEPTH_TEST);
+
     // Activer la transparence (blending)
     glEnable(GL_BLEND);
     glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE_MINUS_DST_ALPHA, GL_ONE);
@@ -54,7 +57,7 @@ int main()
     while (gl::window_is_open())
     {
         glClearColor(0.78, 0.2, 0.2, 1.0); // Couleur de fond
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         shader.bind();
 
