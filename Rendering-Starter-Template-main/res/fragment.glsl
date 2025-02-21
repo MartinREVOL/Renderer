@@ -2,14 +2,11 @@
 
 out vec4 out_color;
 
-uniform float u_time;
+in vec2 frag_uv; // UVs passés depuis le vertex shader
 
-// À mettre avant le main
-in vec3 vertex_position;
+uniform sampler2D texture_sampler; // La texture
 
 void main()
 {
-
-    out_color = vec4(vertex_position, 1.);
-
+    out_color = texture(texture_sampler, frag_uv); // Appliquer la texture
 }

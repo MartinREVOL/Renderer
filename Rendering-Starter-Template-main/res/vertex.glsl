@@ -1,17 +1,14 @@
 #version 410
 
-// À mettre avant le main
-out vec3 vertex_position;
-
 layout(location = 0) in vec3 in_position;
+layout(location = 1) in vec2 in_uv; // Attribut UV
 
-uniform mat4 model_view_projection_matrix; // Matrice combinée MVP
+out vec2 frag_uv; // Passer les UVs au fragment shader
 
-
+uniform mat4 model_view_projection_matrix;
 
 void main()
 {
-    vertex_position = in_position;
-    // Appliquer la matrice MVP à la position des sommets
+    frag_uv = in_uv; // Passer les UVs au fragment shader
     gl_Position = model_view_projection_matrix * vec4(in_position, 1.0);
 }
