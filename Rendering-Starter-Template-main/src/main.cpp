@@ -1,6 +1,77 @@
 #include "opengl-framework/opengl-framework.hpp" // Inclue la librairie de rendu
 #include "glm/ext/matrix_transform.hpp"         // Pour glm::rotate et glm::translate
 #include "glm/ext/matrix_clip_space.hpp"        // Pour glm::infinitePerspective
+#include <iostream>
+
+auto load_mesh(std::filesystem::path const& path) -> gl::Mesh
+{
+    // Lecture du fichier .obj avec tinyobjloader
+    auto reader = tinyobj::ObjReader{};
+    reader.ParseFromFile(gl::make_absolute_path(path).string(), {});
+
+    if (!reader.Error().empty())
+        throw std::runtime_error("Failed to read 3D model:\n" + reader.Error());
+    if (!reader.Warning().empty())
+        std::cout << "Warning while reading 3D model:\n" + reader.Warning();
+
+    // Tableaux de stockage des données
+    auto vertices = std::vector<float>{};  // Positions, UVs et normales
+    auto indices = std::vector<uint32_t>{}; // Indices des faces
+
+    for (auto const& shape : reader.GetShapes())
+    {
+        for (auto const& idx : shape.mesh.indices)
+        {
+            // Position 3D
+            vertices.push_back(reader.GetAttrib().vertices[3 * idx.vertex_index + 0]);
+            vertices.push_back(reader.GetAttrib().vertices[3 * idx.vertex_index + 1]);
+            vertices.push_back(reader.GetAttrib().vertices[3 * idx.vertex_index + 2]);
+
+            // UVs (peut être absent)
+            if (!reader.GetAttrib().texcoords.empty())
+            {
+                vertices.push_back(reader.GetAttrib().texcoords[2 * idx.texcoord_index + 0]);
+                vertices.push_back(reader.GetAttrib().texcoords[2 * idx.texcoord_index + 1]);
+            }
+            else
+            {
+                vertices.push_back(0.0f); // UV.x par défaut
+                vertices.push_back(0.0f); // UV.y par défaut
+            }
+
+            // Normales (peut être absent)
+            if (!reader.GetAttrib().normals.empty())
+            {
+                vertices.push_back(reader.GetAttrib().normals[3 * idx.normal_index + 0]);
+                vertices.push_back(reader.GetAttrib().normals[3 * idx.normal_index + 1]);
+                vertices.push_back(reader.GetAttrib().normals[3 * idx.normal_index + 2]);
+            }
+            else
+            {
+                vertices.push_back(0.0f); // Normale.x par défaut
+                vertices.push_back(0.0f); // Normale.y par défaut
+                vertices.push_back(1.0f); // Normale.z par défaut (face vers l'avant)
+            }
+
+            // Ajout des indices
+            indices.push_back(static_cast<uint32_t>(indices.size()));
+        }
+    }
+
+    // Création du mesh OpenGL
+    return gl::Mesh{{
+        .vertex_buffers = {{
+            .layout = {
+                gl::VertexAttribute::Position3D{0}, // Positions 3D
+                gl::VertexAttribute::UV{1},         // UVs
+                gl::VertexAttribute::Vec3{2}      // Normales
+            },
+            .data   = vertices,
+        }},
+        .index_buffer = indices
+    }};
+}
+
 
 int main()
 {
@@ -51,31 +122,34 @@ int main()
     glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE_MINUS_DST_ALPHA, GL_ONE);
 
     // Définition du maillage (rectangle)
-    auto const rectangle_mesh = gl::Mesh{{
-        .vertex_buffers = { {
-            .layout = {gl::VertexAttribute::Position3D{0}, gl::VertexAttribute::UV{1}},
-            .data   = {
-                // Positions 3D       // UVs
-                -0.5f, -0.5f, -0.5f,  0.0f, 0.0f, // Face avant
-                +0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
-                +0.5f, +0.5f, -0.5f,  1.0f, 1.0f,
-                -0.5f, +0.5f, -0.5f,  0.0f, 1.0f,
+    // auto const rectangle_mesh = gl::Mesh{{
+    //     .vertex_buffers = { {
+    //         .layout = {gl::VertexAttribute::Position3D{0}, gl::VertexAttribute::UV{1}},
+    //         .data   = {
+    //             // Positions 3D       // UVs
+    //             -0.5f, -0.5f, -0.5f,  0.0f, 0.0f, // Face avant
+    //             +0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
+    //             +0.5f, +0.5f, -0.5f,  1.0f, 1.0f,
+    //             -0.5f, +0.5f, -0.5f,  0.0f, 1.0f,
 
-                -0.5f, -0.5f, +0.5f,  0.0f, 0.0f, // Face arrière
-                +0.5f, -0.5f, +0.5f,  1.0f, 0.0f,
-                +0.5f, +0.5f, +0.5f,  1.0f, 1.0f,
-                -0.5f, +0.5f, +0.5f,  0.0f, 1.0f
-            },
-        }},
-        .index_buffer   = {
-            0, 1, 2,  2, 3, 0, // Face avant
-            4, 5, 6,  6, 7, 4, // Face arrière
-            3, 2, 6,  6, 7, 3, // Face haut
-            0, 1, 5,  5, 4, 0, // Face bas
-            0, 3, 7,  7, 4, 0, // Face gauche
-            1, 2, 6,  6, 5, 1  // Face droite
-        },
-    }};
+    //             -0.5f, -0.5f, +0.5f,  0.0f, 0.0f, // Face arrière
+    //             +0.5f, -0.5f, +0.5f,  1.0f, 0.0f,
+    //             +0.5f, +0.5f, +0.5f,  1.0f, 1.0f,
+    //             -0.5f, +0.5f, +0.5f,  0.0f, 1.0f
+    //         },
+    //     }},
+    //     .index_buffer   = {
+    //         0, 1, 2,  2, 3, 0, // Face avant
+    //         4, 5, 6,  6, 7, 4, // Face arrière
+    //         3, 2, 6,  6, 7, 3, // Face haut
+    //         0, 1, 5,  5, 4, 0, // Face bas
+    //         0, 3, 7,  7, 4, 0, // Face gauche
+    //         1, 2, 6,  6, 5, 1  // Face droite
+    //     },
+    // }};
+
+    auto const model_mesh = load_mesh("res/fourareen.obj");
+
 
     auto const screen_quad = gl::Mesh{{
         .vertex_buffers = {{
@@ -111,7 +185,7 @@ int main()
 
     auto const texture = gl::Texture{
         gl::TextureSource::File{ // Peut être un fichier, ou directement un tableau de pixels
-            .path           = "res/texture.png",
+            .path           = "res/texture2.jpg",
             .flip_y         = true, // Il n'y a pas de convention universelle sur la direction de l'axe Y. Les fichiers (.png, .jpeg) utilisent souvent une direction différente de celle attendue par OpenGL. Ce booléen flip_y est là pour inverser la texture si jamais elle n'apparaît pas dans le bon sens.
             .texture_format = gl::InternalFormat::RGBA8, // Format dans lequel la texture sera stockée. On pourrait par exemple utiliser RGBA16 si on voulait 16 bits par canal de couleur au lieu de 8. (Mais ça ne sert à rien dans notre cas car notre fichier ne contient que 8 bits par canal, donc on ne gagnerait pas de précision). On pourrait aussi stocker en RGB8 si on ne voulait pas de canal alpha. On utilise aussi parfois des textures avec un seul canal (R8) pour des usages spécifiques.
         },
@@ -171,7 +245,8 @@ int main()
             shader.set_uniform("texture_sampler", texture);
 
             // Dessiner le rectangle
-            rectangle_mesh.draw();
+            //rectangle_mesh.draw();
+            model_mesh.draw();
 
             gl::framebuffer_aspect_ratio(); // Gérer le redimensionnement
         });
