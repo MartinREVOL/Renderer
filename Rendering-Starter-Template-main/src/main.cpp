@@ -152,7 +152,7 @@ int main()
         glm::vec3 light_direction_ws = glm::normalize(glm::vec3(0.2f, 0.3f, -1.0f));
         glm::vec3 light_position_ws = glm::vec3(2.0f, 2.0f, 2.0f);
 
-        glm::vec3 light_color = glm::vec3(0.2f, 0.2f, 0.2f); // Lumière orange
+        glm::vec3 light_color = glm::vec3(1.0f, 0.9f, 0.7f); // Lumière jaune douce (lumière du soleil)
 
         // Envoyer les uniformes aux shaders
         shader.set_uniform("model_view_projection_matrix", model_view_projection_matrix);
