@@ -1,35 +1,46 @@
 #version 410
 
-out vec4 out_color;
-
-in vec2 frag_uv;
-in vec3 frag_position_ws; // Position du fragment en World Space
-in vec3 frag_normal_ws;   // Normale en World Space
+in vec3 position_ws;
+in vec2 uv;
+in vec3 normal_ws;
+in vec4 frag_position_light_space;
 
 uniform sampler2D texture_sampler;
-uniform vec3 light_direction_ws; // Lumière directionnelle
-uniform vec3 light_position_ws;  // Lumière ponctuelle
-uniform vec3 light_color;        // 🌞 Couleur de la lumière douce
+uniform sampler2D shadow_map; // Ajout de la shadow map
 
-const float ambient_intensity = 0.5; // Augmenter la lumière ambiante pour un rendu plus doux
+uniform vec3 light_color;
+uniform vec3 light_position_ws;
+
+out vec4 out_color;
+
+float calculate_shadow(vec4 frag_pos_light)
+{
+    vec3 proj_coords = frag_pos_light.xyz / frag_pos_light.w; // Conversion en coordonnées normales
+    proj_coords = proj_coords * 0.5 + 0.5; // Normalisation (0,1)
+
+    float closest_depth = texture(shadow_map, proj_coords.xy).r; // Profondeur depuis la shadow map
+    float current_depth = proj_coords.z;
+
+    float bias = 0.005; // Évite l'auto-ombrage (shadow acne)
+    float shadow = current_depth - bias > closest_depth ? 0.5 : 1.0; // Ombre ou pas
+
+    return shadow;
+}
 
 void main()
 {
-    vec3 normal = normalize(frag_normal_ws);
-    vec3 albedo = texture(texture_sampler, frag_uv).rgb;
+    // Récupération de la texture
+    vec3 albedo = texture(texture_sampler, uv).rgb;
 
-    // Lumière directionnelle
-    float light_intensity = max(dot(normal, -light_direction_ws), 0.0) * 0.8; // Réduction de l'intensité
+    // Calcul de la lumière directionnelle
+    vec3 light_dir = normalize(light_position_ws - position_ws);
+    float diff = max(dot(normal_ws, light_dir), 0.0);
 
-    // Lumière ponctuelle
-    vec3 light_dir = normalize(light_position_ws - frag_position_ws);
-    float distance = length(light_position_ws - frag_position_ws);
-    float attenuation = 1.0 / (1.0 + 0.05 * distance + 0.02 * distance * distance) * 0.1; // Atténuation plus douce
-    float point_light_intensity = max(dot(normal, light_dir), 0.0) * attenuation;
+    // Calcul des ombres
+    float shadow = calculate_shadow(frag_position_light_space);
 
-    // Lumière finale avec teinte jaune douce
-    float final_intensity = max(light_intensity + point_light_intensity + ambient_intensity, ambient_intensity);
-    vec3 shaded_color = albedo * light_color * final_intensity;
-
-    out_color = vec4(shaded_color, 1.0);
+    // Calcul final de la couleur
+    vec3 color = albedo * light_color * diff * shadow;
+    
+    out_color = vec4(color, 1.0);
 }
